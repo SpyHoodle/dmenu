@@ -1,5 +1,6 @@
 # dmenu
-My perfect build of suckless's dmenu
+My perfect build of suckless's dmenu.<br>
+Designed for my build of dwm, [perfectwm](https://github.com/SpyHoodle/perfectwm).
 
 # patches
 - dmenu-mousesupport-5.0.diff
