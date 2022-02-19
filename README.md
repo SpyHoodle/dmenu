@@ -1,10 +1,11 @@
 # dmenu
-My perfect build of suckless's dmenu.<br>
-Designed for my build of dwm, [perfectwm](https://github.com/SpyHoodle/perfectwm).
+My perfect build of suckless's dmenu. Designed for my build of dwm, [perfectwm](https://github.com/SpyHoodle/perfectwm).
+
+![dmenu screenshot](https://file.coffee/u/4hxT5TKONwrZm0.png)
 
 # patches
-- dmenu-mousesupport-5.0.diff
-- dmenu-xresources-alt-5.0.diff
+- dmenu-mousesupport-5.1.diff
+- dmenu-numbers-4.9.diff
 
 # installation
 Clone the git repository
