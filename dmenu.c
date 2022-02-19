@@ -11,7 +11,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
-#include <X11/Xresource.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif
@@ -25,6 +24,8 @@
                              * MAX(0, MIN((y)+(h),(r).y_org+(r).height) - MAX((y),(r).y_org)))
 #define LENGTH(X)             (sizeof X / sizeof X[0])
 #define TEXTW(X)              (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define NUMBERSMAXDIGITS      100
+#define NUMBERSBUFSIZE        (NUMBERSMAXDIGITS * 2) + 1
 
 /* enums */
 enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
@@ -35,6 +36,7 @@ struct item {
 	int out;
 };
 
+static char numbers[NUMBERSBUFSIZE] = "";
 static char text[BUFSIZ] = "";
 static char *embed;
 static int bh, mw, mh;
@@ -53,21 +55,6 @@ static XIC xic;
 
 static Drw *drw;
 static Clr *scheme[SchemeLast];
-
-/* Xresources preferences */
-enum resource_type {
-	STRING = 0,
-	INTEGER = 1,
-	FLOAT = 2
-};
-typedef struct {
-	char *name;
-	enum resource_type type;
-	void *dst;
-} ResourcePref;
-
-static void load_xresources(void);
-static void resource_load(XrmDatabase db, char *name, enum resource_type rtype, void *dst);
 
 #include "config.h"
 
@@ -119,13 +106,20 @@ cleanup(void)
 }
 
 static char *
-cistrstr(const char *s, const char *sub)
+cistrstr(const char *h, const char *n)
 {
-	size_t len;
+	size_t i;
 
-	for (len = strlen(sub); *s; s++)
-		if (!strncasecmp(s, sub, len))
-			return (char *)s;
+	if (!n[0])
+		return (char *)h;
+
+	for (; *h; ++h) {
+		for (i = 0; n[i] && tolower((unsigned char)n[i]) ==
+		            tolower((unsigned char)h[i]); ++i)
+			;
+		if (n[i] == '\0')
+			return (char *)h;
+	}
 	return NULL;
 }
 
@@ -140,6 +134,21 @@ drawitem(struct item *item, int x, int y, int w)
 		drw_setscheme(drw, scheme[SchemeNorm]);
 
 	return drw_text(drw, x, y, w, bh, lrpad / 2, item->text, 0);
+}
+
+static void
+recalculatenumbers()
+{
+	unsigned int numer = 0, denom = 0;
+	struct item *item;
+	if (matchend) {
+		numer++;
+		for (item = matchend; item && item->left; item = item->left)
+			numer++;
+	}
+	for (item = items; item && item->text; item++)
+		denom++;
+	snprintf(numbers, NUMBERSBUFSIZE, "%d/%d", numer, denom);
 }
 
 static void
@@ -167,6 +176,7 @@ drawmenu(void)
 		drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
 	}
 
+	recalculatenumbers();
 	if (lines > 0) {
 		/* draw vertical list */
 		for (item = curr; item != next; item = item->right)
@@ -181,13 +191,15 @@ drawmenu(void)
 		}
 		x += w;
 		for (item = curr; item != next; item = item->right)
-			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">")));
+			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">") - TEXTW(numbers)));
 		if (next) {
 			w = TEXTW(">");
 			drw_setscheme(drw, scheme[SchemeNorm]);
-			drw_text(drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
+			drw_text(drw, mw - w - TEXTW(numbers), 0, w, bh, lrpad / 2, ">", 0);
 		}
 	}
+	drw_setscheme(drw, scheme[SchemeNorm]);
+	drw_text(drw, mw - TEXTW(numbers), 0, TEXTW(numbers), bh, lrpad / 2, numbers, 0);
 	drw_map(drw, win, 0, 0, mw, mh);
 }
 
@@ -413,7 +425,7 @@ keypress(XKeyEvent *ev)
 
 	switch(ksym) {
 	default:
-	insert:
+insert:
 		if (!iscntrl(*buf))
 			insert(buf, len);
 		break;
@@ -687,54 +699,6 @@ readstdin(void)
 	lines = MIN(lines, i);
 }
 
-void
-resource_load(XrmDatabase db, char *name, enum resource_type rtype, void *dst)
-{
-	char *sdst = NULL;
-	int *idst = NULL;
-	float *fdst = NULL;
-	sdst = dst;
-	idst = dst;
-	fdst = dst;
-	char fullname[256];
-	char *type;
-	XrmValue ret;
-	snprintf(fullname, sizeof(fullname), "%s.%s", "dmenu", name);
-	fullname[sizeof(fullname) - 1] = '\0';
-	XrmGetResource(db, fullname, "*", &type, &ret);
-	if (!(ret.addr == NULL || strncmp("String", type, 64)))
-	{
-		switch (rtype) {
-		case STRING:
-			strcpy(sdst, ret.addr);
-			break;
-		case INTEGER:
-			*idst = strtoul(ret.addr, NULL, 10);
-			break;
-		case FLOAT:
-			*fdst = strtof(ret.addr, NULL);
-			break;
-		}
-	}
-}
-
-void
-load_xresources(void)
-{
-	Display *display;
-	char *resm;
-	XrmDatabase db;
-	ResourcePref *p;
-	display = XOpenDisplay(NULL);
-	resm = XResourceManagerString(display);
-	if (!resm)
-		return;
-	db = XrmGetStringDatabase(resm);
-	for (p = resources; p < resources + LENGTH(resources); p++)
-		resource_load(db, p->name, p->type, p->dst);
-	XCloseDisplay(display);
-}
-
 static void
 run(void)
 {
@@ -892,9 +856,6 @@ main(int argc, char *argv[])
 	XWindowAttributes wa;
 	int i, fast = 0;
 
-	XrmInitialize();
-	load_xresources();
-	
 	for (i = 1; i < argc; i++)
 		/* these options take no arguments */
 		if (!strcmp(argv[i], "-v")) {      /* prints version information */
