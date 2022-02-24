@@ -10,13 +10,13 @@ static const char *fonts[] = {
 };
 
 /* -p option; prompt to the left of input field */
-static const char *prompt      = NULL;
+static const char *prompt = NULL;
 
 /* colours from cols */
 #include "/home/spy/.config/cols/dmenu.h"
 
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
-static unsigned int lines      = 0;
+static unsigned int lines = 0;
 
 /*
  * Characters not considered part of a word while deleting words
