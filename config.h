@@ -2,7 +2,7 @@
 /* Default settings; can be overriden by command line. */
 
 /* -b option; if 0, dmenu appears at bottom */
-static int topbar = 0;
+static int topbar = 1;
 
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = {
@@ -12,8 +12,8 @@ static const char *fonts[] = {
 /* -p option; prompt to the left of input field */
 static const char *prompt = NULL;
 
-/* colours */
-#include "colours.h"
+/* theme */
+#include "themes/onedark.h"
 
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
 static unsigned int lines = 0;

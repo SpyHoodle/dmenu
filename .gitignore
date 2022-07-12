@@ -1,3 +1,6 @@
+.ccls-cache
+*.orig
+*.rej
 *.o
 dmenu
 stest
